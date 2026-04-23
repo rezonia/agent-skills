@@ -1,0 +1,21 @@
+{
+  "name": "rezonia-agent-skills",
+  "owner": {
+    "name": "Rezonia",
+    "url": "https://github.com/rezonia"
+  },
+  "metadata": {
+    "description": "Rezonia internal Claude Code agent skills for engineering workflows.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "jira-workflow",
+      "source": "./skills/jira-workflow",
+      "description": "Mandatory Jira workflow gating: ticket discovery/creation with EPIC + Fibonacci story points + sprint, assignee = current MCP user, In Progress on start, In Review on PR open, PR title format that drives auto-Done on merge.",
+      "version": "0.1.0",
+      "category": "workflow",
+      "tags": ["jira", "atlassian", "workflow", "pr", "agile"]
+    }
+  ]
+}
