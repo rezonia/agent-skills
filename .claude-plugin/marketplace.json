@@ -16,6 +16,14 @@
       "version": "0.1.0",
       "category": "workflow",
       "tags": ["jira", "atlassian", "workflow", "pr", "agile"]
+    },
+    {
+      "name": "laravel-php-guidelines",
+      "source": "./skills/laravel-php-guidelines",
+      "description": "Rezonia's PHP + Laravel coding standards: PER coding style, strict typing, early-return control flow, Laravel helpers (Arr/Str/data_get/fluent), Illuminate\\Support\\Carbon, PHP 8 attributes, translation (__() / @lang()), route tuple notation, enum UPPER_SNAKE_CASE, and full file/class naming conventions.",
+      "version": "0.1.0",
+      "category": "standards",
+      "tags": ["php", "laravel", "blade", "coding-standards", "per", "style"]
     }
   ]
 }

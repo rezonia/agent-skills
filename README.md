@@ -7,6 +7,7 @@ Private Claude Code skills marketplace for Rezonia engineering workflows.
 | Skill | Description |
 |---|---|
 | [jira-workflow](./skills/jira-workflow) | Mandatory Jira gating for brainstorms, implementations, and PRs. Ticket creation/sync with EPIC + Fibonacci story points + sprint, assignee = current MCP user, status transitions, PR title enforcement. |
+| [laravel-php-guidelines](./skills/laravel-php-guidelines) | PHP + Laravel coding standards: PER style, strict typing, early-return control flow, Laravel helpers, Carbon, PHP 8 attributes, translation, routes/config/enums, full file & class naming conventions. |
 
 ## Install as a Claude Code plugin marketplace
 
