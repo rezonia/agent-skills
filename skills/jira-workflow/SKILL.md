@@ -15,6 +15,47 @@ This skill handles: Jira issue discovery, creation, status transitions, assignee
 
 This skill does NOT handle: actual code implementation, code review, deployment, or non-Jira project management tools.
 
+## Execution Model — Delegate to Subagent (MANDATORY)
+
+All Atlassian MCP calls (tool discovery, field resolution, JQL queries, issue CRUD, transitions) MUST run in a **subagent** to keep main session context lean. The Atlassian MCP tool surface is large and noisy — do not pollute the orchestrator.
+
+**Dispatch rule**
+
+| Situation | Agent | Why |
+|---|---|---|
+| Unknown MCP tool shape, custom-field IDs not yet cached | `mcp-manager` | Discovers/executes MCP tools without leaking tool schemas to main context |
+| Cached field IDs exist in `./CLAUDE.md`, routine ticket ops | `general-purpose` | Lighter spin-up, direct MCP tool calls |
+| Ambiguous / multi-step (resolve + create + transition) | `mcp-manager` | Single round trip, returns compact summary |
+
+**Prompt template for the subagent**
+
+```
+Task: <Ticket Resolution | Existing Ticket Sync | PR Title Enforcement>
+Jira config (from ./CLAUDE.md ## Jira section):
+  cloudId: <...>
+  projectKey: <...>
+  boardId: <...>
+  storyPointsField: <...>
+  epicLinkField: <...>
+  sprintField: <...>
+Current MCP accountId (cached): <...>
+Inputs: <issue code / summary / epic / points / sprint / branch name>
+Required output (terse, <200 words):
+  - issueKey, url
+  - summary, status, assignee, storyPoints, epic, sprint
+  - transitions applied
+  - any unresolved questions
+Work context: <repo path>
+```
+
+**Orchestrator responsibilities (stay in main session)**
+- Run `AskUserQuestion` to collect summary / epic / points / sprint / confirmation — NEVER ask the user from inside the subagent.
+- Read `./CLAUDE.md` `## Jira` block; prompt user once if missing, persist after confirmation.
+- Pass collected inputs + cached config to the subagent; receive the terse report back.
+- Surface the final key + URL + status to the user.
+
+**Do NOT** dispatch a subagent for the bypass path ("skip jira") — just log and continue.
+
 ## Security Policy
 
 - Never expose API tokens, MCP credentials, or account IDs in chat or commits
@@ -52,24 +93,22 @@ User input
 
 Use when user starts work without a Jira code.
 
+**Orchestrator (main session):**
 1. Ask: "Do you have a Jira issue code for this task?" (`AskUserQuestion`).
 2. **If yes** → jump to "Existing Ticket Sync".
-3. **If no** → propose a new ticket. Gather in one `AskUserQuestion` batch:
-   - **Summary** — concise imperative title.
-   - **EPIC** — query existing epics via `searchJiraIssuesUsingJql` with `project = <KEY> AND issuetype = Epic ORDER BY created DESC` (top 10), present as options + "Create new EPIC".
-   - **Story points (Fibonacci)** — suggest a value with rationale, options: `1, 2, 3, 5, 8, 13`.
-   - **Sprint** — query active + future sprints, present as options + "Backlog".
-4. Confirm summary + EPIC + points + sprint with user.
-5. Create the ticket via `createJiraIssue`:
-   - `projectKey`.
-   - `issueTypeName`: infer from intent — `"Bug"` if user mentions fix/bug/error/broken/regression/issue, otherwise `"Task"` (or user-chosen `Story`). Confirm in the AskUserQuestion batch when ambiguous.
-   - `summary`, `description` (include brainstorm context).
-   - `assignee_account_id`: cached current-user accountId.
-   - `additional_fields`: `{ "<storyPointsField>": <points>, "<epicLinkField>": "<EPIC-KEY>" }` — resolve field IDs once via `getJiraIssueTypeMetaWithFields` and cache in CLAUDE.md.
-6. If "new EPIC" chosen: create EPIC first (`issueTypeName: "Epic"`), then link the task.
-7. If a sprint chosen: edit the issue with `editJiraIssue` setting the sprint customfield.
-8. Transition the new issue to **In Progress** via `getTransitionsForJiraIssue` + `transitionJiraIssue`.
-9. Report the issue key + URL back to the user.
+3. **If no** → first dispatch a `mcp-manager` subagent to fetch (a) top 10 existing Epics via `searchJiraIssuesUsingJql` `project = <KEY> AND issuetype = Epic ORDER BY created DESC`, and (b) active + future sprints for `boardId`. Receive a compact options list back.
+4. Single `AskUserQuestion` batch to user: **Summary**, **EPIC** (options + "Create new EPIC"), **Story points** (`1, 2, 3, 5, 8, 13` with suggested rationale), **Sprint** (options + "Backlog"), and **Issue type** when ambiguous (`Bug` if fix/error/broken/regression keywords; else `Task`/`Story`).
+5. Confirm the resolved set with user if non-trivial.
+
+**Subagent (dispatched with collected inputs):**
+6. If "new EPIC": create EPIC via `createJiraIssue` (`issueTypeName: "Epic"`).
+7. Resolve custom-field IDs once via `getJiraIssueTypeMetaWithFields` if not cached.
+8. `createJiraIssue` with: `projectKey`, `issueTypeName`, `summary`, `description`, `assignee_account_id` (cached), `additional_fields: { "<storyPointsField>": <points>, "<epicLinkField>": "<EPIC-KEY>" }`.
+9. If sprint chosen: `editJiraIssue` setting sprint customfield.
+10. `getTransitionsForJiraIssue` + `transitionJiraIssue` → **In Progress**.
+11. Return `{ issueKey, url, summary, points, epic, sprint, status }`.
+
+**Orchestrator:** report key + URL + status to user; persist any newly-resolved field IDs to `./CLAUDE.md` `## Jira` block.
 
 Detailed field-ID resolution: `references/atlassian-mcp-cheatsheet.md`.
 
@@ -77,15 +116,20 @@ Detailed field-ID resolution: `references/atlassian-mcp-cheatsheet.md`.
 
 Use when user provides or mentions a Jira code (e.g. `SKY-123`).
 
-1. Fetch via `getJiraIssue` (request `summary`, `status`, `assignee`, story-points field, `parent`, sprint field).
-2. **Verify story points present.** If missing → ask user (Fibonacci options) and `editJiraIssue` to set it.
-3. **Verify EPIC link present** (parent for next-gen, or epic-link customfield). If missing → run EPIC selection sub-flow from Workflow 1, then link.
-4. **Verify assignee = current MCP user.** If not → ask "Reassign SKY-123 to you?" → if yes, `editJiraIssue` with `{ "assignee": { "accountId": "<cached>" } }`.
-5. **Transition status to "In Progress"** if currently `To Do` / `Open` / `Backlog`:
-   - Get available transitions via `getTransitionsForJiraIssue`.
-   - Match by name (case-insensitive) for "In Progress" / "Start Progress".
-   - Apply via `transitionJiraIssue`.
-6. Confirm sync summary to user (key, summary, points, epic, sprint, status).
+**Subagent (mcp-manager or general-purpose if fields cached):**
+1. `getJiraIssue` (request `summary`, `status`, `assignee`, story-points field, `parent`, sprint field).
+2. Return current state to orchestrator: `{ key, summary, status, assignee, points, epic, sprint, availableTransitions }`.
+
+**Orchestrator (main session):**
+3. Detect gaps: missing story points, missing EPIC, assignee != cached current user, status in `To Do`/`Open`/`Backlog`.
+4. Batch one `AskUserQuestion`: confirm point value (Fibonacci), pick/create EPIC if missing, confirm reassignment, confirm transition to In Progress.
+
+**Subagent (second dispatch with user's answers):**
+5. Apply fixes via `editJiraIssue` (points, epic-link, assignee).
+6. `transitionJiraIssue` → **In Progress** (match by name case-insensitive: "In Progress" / "Start Progress").
+7. Return final synced state.
+
+**Orchestrator:** confirm sync summary to user (key, summary, points, epic, sprint, status).
 
 ## Workflow 3: PR Title Enforcement
 
@@ -101,11 +145,11 @@ Examples:
 - `[SKY-789] refactor: extract payslip service`
 
 Steps:
-1. Determine the active Jira key (from session context, branch name `feature/SKY-123-...`, or ask).
-2. Validate proposed title matches `^\[[A-Z]+-\d+\]\s+(feat|fix|chore|docs|refactor|test|perf|build|ci|style)(\(.+\))?:\s+.+`.
-3. If user provided a title without the key → prepend `[<KEY>]`.
-4. After PR is opened, transition Jira issue to **In Review** (look for transitions named "In Review", "Code Review", or "Ready for Review").
-5. Note: merge automation (Jira Smart Commits / GitHub for Jira) handles **Done** transition automatically when the merge commit message contains the key.
+1. Orchestrator: determine active Jira key (from session context, branch name `feature/SKY-123-...`, or ask user).
+2. Orchestrator: validate/format the PR title against `^\[[A-Z]+-\d+\]\s+(feat|fix|chore|docs|refactor|test|perf|build|ci|style)(\(.+\))?:\s+.+`. If user's title missing the key → prepend `[<KEY>]`. (No MCP needed — regex only.)
+3. Orchestrator: run `gh pr create` with the validated title.
+4. After PR opens, dispatch subagent (`general-purpose` with cached config) to: `getTransitionsForJiraIssue` → `transitionJiraIssue` → **In Review** (match "In Review" / "Code Review" / "Ready for Review").
+5. Note: merge automation (Jira Smart Commits / GitHub for Jira) handles **Done** transition automatically when the merge commit message contains the key — no subagent call required.
 
 See `references/pr-title-patterns.md` for full regex + edge cases.
 
@@ -155,36 +199,36 @@ Log the bypass reason in your reply so it is auditable in the transcript.
 ### Example A — /brainstorm without code
 ```
 User: /brainstorm add daily revenue export to dashboard
-Skill:
+Orchestrator:
   1. AskUserQuestion: "Do you have a Jira issue code for this?"
   2. User: "No, please create one."
-  3. Query existing Epics → present 5 options + "Create new"
-  4. AskUserQuestion: summary, epic, points (suggest 5), sprint
-  5. createJiraIssue → SKY-241
-  6. transitionJiraIssue → In Progress
-  7. Reply: "Created SKY-241 (5pts, Epic: Reporting, Sprint: Sprint 24). Status: In Progress."
+  3. Dispatch mcp-manager subagent → fetch top Epics + active/next sprints. Returns compact options.
+  4. AskUserQuestion (single batch): summary, epic, points (suggest 5), sprint
+  5. Dispatch mcp-manager subagent with answers → createJiraIssue + editJiraIssue (sprint) + transitionJiraIssue (In Progress).
+  6. Subagent returns: "SKY-241, 5pts, Epic: Reporting, Sprint: Sprint 24, In Progress, https://..."
+  7. Orchestrator reply: "Created SKY-241 (5pts, Epic: Reporting, Sprint: Sprint 24). Status: In Progress."
   8. Continue with brainstorm
 ```
 
 ### Example B — User mentions code mid-conversation
 ```
 User: working on SKY-187 today
-Skill:
-  1. getJiraIssue SKY-187
-  2. Detect missing story points → ask, set to 3
-  3. Detect assignee != current user → ask, reassign
-  4. transitionJiraIssue → In Progress
-  5. Reply: "Synced SKY-187: 3pts, assignee=you, status=In Progress."
+Orchestrator:
+  1. Dispatch subagent → getJiraIssue SKY-187. Returns state.
+  2. Detect missing points + assignee mismatch → AskUserQuestion (batched).
+  3. Dispatch subagent with answers → editJiraIssue (points=3, assignee) + transitionJiraIssue (In Progress).
+  4. Reply: "Synced SKY-187: 3pts, assignee=you, status=In Progress."
 ```
 
 ### Example C — PR creation
 ```
 User: open a PR for this branch
-Skill:
-  1. Branch = feature/SKY-187-revenue-export → key = SKY-187
-  2. Format title: "[SKY-187] feat: add daily revenue export"
-  3. After gh pr create succeeds → transitionJiraIssue → In Review
-  4. Reply: "PR opened. SKY-187 → In Review. Merge will auto-close to Done."
+Orchestrator:
+  1. Branch = feature/SKY-187-revenue-export → key = SKY-187 (no MCP).
+  2. Format title: "[SKY-187] feat: add daily revenue export" (regex only).
+  3. Run gh pr create.
+  4. Dispatch subagent → transitionJiraIssue (In Review).
+  5. Reply: "PR opened. SKY-187 → In Review. Merge will auto-close to Done."
 ```
 
 ## Reference Files
