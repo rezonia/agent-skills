@@ -17,20 +17,14 @@ This skill does NOT handle: actual code implementation, code review, deployment,
 
 ## Execution Model — Delegate to Subagent (MANDATORY)
 
-All Atlassian MCP calls (tool discovery, field resolution, JQL queries, issue CRUD, transitions) MUST run in a **subagent** to keep main session context lean. The Atlassian MCP tool surface is large and noisy — do not pollute the orchestrator.
+All Atlassian MCP calls (tool discovery, field resolution, JQL queries, issue CRUD, transitions) MUST run in the **`jira-manager` subagent** (shipped with this plugin at `.claude/agents/jira-manager.md`) to keep main session context lean. The Atlassian MCP tool surface is large and noisy — do not pollute the orchestrator.
 
-**Dispatch rule**
+**Dispatch rule:** always spawn `jira-manager` with a task name (`query-epics-sprints` | `resolve-ticket` | `sync-ticket` | `transition`) + pre-resolved inputs. The subagent never prompts the user — it accepts inputs or returns `NEEDS_CONTEXT`.
 
-| Situation | Agent | Why |
-|---|---|---|
-| Unknown MCP tool shape, custom-field IDs not yet cached | `mcp-manager` | Discovers/executes MCP tools without leaking tool schemas to main context |
-| Cached field IDs exist in `./CLAUDE.md`, routine ticket ops | `general-purpose` | Lighter spin-up, direct MCP tool calls |
-| Ambiguous / multi-step (resolve + create + transition) | `mcp-manager` | Single round trip, returns compact summary |
-
-**Prompt template for the subagent**
+**Prompt template for `jira-manager`**
 
 ```
-Task: <Ticket Resolution | Existing Ticket Sync | PR Title Enforcement>
+Task: query-epics-sprints | resolve-ticket | sync-ticket | transition
 Jira config (from ./CLAUDE.md ## Jira section):
   cloudId: <...>
   projectKey: <...>
@@ -39,12 +33,8 @@ Jira config (from ./CLAUDE.md ## Jira section):
   epicLinkField: <...>
   sprintField: <...>
 Current MCP accountId (cached): <...>
-Inputs: <issue code / summary / epic / points / sprint / branch name>
-Required output (terse, <200 words):
-  - issueKey, url
-  - summary, status, assignee, storyPoints, epic, sprint
-  - transitions applied
-  - any unresolved questions
+Inputs: <issue key / summary / epic / points / sprint / transition name>
+Expected output: terse structured summary per jira-manager contract.
 Work context: <repo path>
 ```
 
@@ -96,7 +86,7 @@ Use when user starts work without a Jira code.
 **Orchestrator (main session):**
 1. Ask: "Do you have a Jira issue code for this task?" (`AskUserQuestion`).
 2. **If yes** → jump to "Existing Ticket Sync".
-3. **If no** → first dispatch a `mcp-manager` subagent to fetch (a) top 10 existing Epics via `searchJiraIssuesUsingJql` `project = <KEY> AND issuetype = Epic ORDER BY created DESC`, and (b) active + future sprints for `boardId`. Receive a compact options list back.
+3. **If no** → first dispatch `jira-manager` (task: `query-epics-sprints`) to fetch top 10 existing Epics + active/future sprints for `boardId`. Receive compact options list back.
 4. Single `AskUserQuestion` batch to user: **Summary**, **EPIC** (options + "Create new EPIC"), **Story points** (`1, 2, 3, 5, 8, 13` with suggested rationale), **Sprint** (options + "Backlog"), and **Issue type** when ambiguous (`Bug` if fix/error/broken/regression keywords; else `Task`/`Story`).
 5. Confirm the resolved set with user if non-trivial.
 
@@ -116,7 +106,7 @@ Detailed field-ID resolution: `references/atlassian-mcp-cheatsheet.md`.
 
 Use when user provides or mentions a Jira code (e.g. `SKY-123`).
 
-**Subagent (mcp-manager or general-purpose if fields cached):**
+**Subagent (`jira-manager`, task: `sync-ticket` — read pass):**
 1. `getJiraIssue` (request `summary`, `status`, `assignee`, story-points field, `parent`, sprint field).
 2. Return current state to orchestrator: `{ key, summary, status, assignee, points, epic, sprint, availableTransitions }`.
 
@@ -148,7 +138,7 @@ Steps:
 1. Orchestrator: determine active Jira key (from session context, branch name `feature/SKY-123-...`, or ask user).
 2. Orchestrator: validate/format the PR title against `^\[[A-Z]+-\d+\]\s+(feat|fix|chore|docs|refactor|test|perf|build|ci|style)(\(.+\))?:\s+.+`. If user's title missing the key → prepend `[<KEY>]`. (No MCP needed — regex only.)
 3. Orchestrator: run `gh pr create` with the validated title.
-4. After PR opens, dispatch subagent (`general-purpose` with cached config) to: `getTransitionsForJiraIssue` → `transitionJiraIssue` → **In Review** (match "In Review" / "Code Review" / "Ready for Review").
+4. After PR opens, dispatch `jira-manager` (task: `transition`, name: "In Review") → matches "In Review" / "Code Review" / "Ready for Review" automatically.
 5. Note: merge automation (Jira Smart Commits / GitHub for Jira) handles **Done** transition automatically when the merge commit message contains the key — no subagent call required.
 
 See `references/pr-title-patterns.md` for full regex + edge cases.
@@ -202,9 +192,9 @@ User: /brainstorm add daily revenue export to dashboard
 Orchestrator:
   1. AskUserQuestion: "Do you have a Jira issue code for this?"
   2. User: "No, please create one."
-  3. Dispatch mcp-manager subagent → fetch top Epics + active/next sprints. Returns compact options.
+  3. Dispatch `jira-manager` (task: `query-epics-sprints`) → returns compact options.
   4. AskUserQuestion (single batch): summary, epic, points (suggest 5), sprint
-  5. Dispatch mcp-manager subagent with answers → createJiraIssue + editJiraIssue (sprint) + transitionJiraIssue (In Progress).
+  5. Dispatch `jira-manager` (task: `resolve-ticket`) with answers → creates issue + sets sprint + transitions to In Progress.
   6. Subagent returns: "SKY-241, 5pts, Epic: Reporting, Sprint: Sprint 24, In Progress, https://..."
   7. Orchestrator reply: "Created SKY-241 (5pts, Epic: Reporting, Sprint: Sprint 24). Status: In Progress."
   8. Continue with brainstorm
@@ -214,9 +204,9 @@ Orchestrator:
 ```
 User: working on SKY-187 today
 Orchestrator:
-  1. Dispatch subagent → getJiraIssue SKY-187. Returns state.
+  1. Dispatch `jira-manager` (sync-ticket, read pass) → returns state.
   2. Detect missing points + assignee mismatch → AskUserQuestion (batched).
-  3. Dispatch subagent with answers → editJiraIssue (points=3, assignee) + transitionJiraIssue (In Progress).
+  3. Dispatch `jira-manager` (sync-ticket, write pass) → editJiraIssue + transitionJiraIssue (In Progress).
   4. Reply: "Synced SKY-187: 3pts, assignee=you, status=In Progress."
 ```
 
@@ -227,7 +217,7 @@ Orchestrator:
   1. Branch = feature/SKY-187-revenue-export → key = SKY-187 (no MCP).
   2. Format title: "[SKY-187] feat: add daily revenue export" (regex only).
   3. Run gh pr create.
-  4. Dispatch subagent → transitionJiraIssue (In Review).
+  4. Dispatch `jira-manager` (task: `transition`, "In Review").
   5. Reply: "PR opened. SKY-187 → In Review. Merge will auto-close to Done."
 ```
 
