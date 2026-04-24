@@ -64,6 +64,9 @@ These apply to every PHP/Laravel change. Full detail in references.
 - **Config** — filename `kebab-case.php`, keys `snake_case`. `env()` ONLY inside `config/*.php`. Everywhere else use `config('file.key')`.
 - **Artisan** — command `name` is `kebab-case` (`payslip:calculate-daily`). In `app/Console/Kernel.php` (or `routes/console.php`) scheduler, reference `CalculateDailyPayslipsCommand::class`, never the string name.
 - **Events / Listeners** — rely on `EventServiceProvider` auto-discovery. Do not hand-register in `$listen` or `boot()` with `Event::listen`, except for complex/dynamic event-listener pairs.
+- **Eloquent first** — always use Eloquent; `DB::` query builder is the last resort (raw bulk ops, recursive CTEs, reporting).
+- **Start queries with `Model::query()`** — better IDE type hints / autocomplete on the chained builder.
+- **Fetch before mutating** — load the model instance first, then `update()` / `delete()` / `save()` so model events and observers fire. Bulk builder mutations are only allowed when bypassing events is intentional (migrations, backfills, seeders) — comment the intent.
 
 ### Naming (see `references/naming-conventions.md`)
 
@@ -109,6 +112,8 @@ Before returning code, verify:
 - [ ] Route uses tuple syntax + kebab-case URL + camelCase route name.
 - [ ] No `env()` outside `config/`.
 - [ ] Scheduler refers to command class, not string name.
+- [ ] Queries start with `Model::query()`; Eloquent used over `DB::` builder.
+- [ ] Mutations fetch model first (events fire); bulk builder mutations only with intent comment.
 - [ ] Enum cases are `UPPER_SNAKE_CASE` for name AND value.
 - [ ] Filenames and class names follow the naming table.
 - [ ] Comments add information the code doesn't already state.

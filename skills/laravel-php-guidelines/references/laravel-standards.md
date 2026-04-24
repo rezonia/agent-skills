@@ -161,6 +161,42 @@ Exception: complex/dynamic event-listener pairs (closures, runtime resolution, m
 - Prefer `#[Scope]` attribute (Laravel 11+) over `scopeXyz` method naming when available.
 - Relationships return-typed: `public function posts(): HasMany`.
 
+### Query building
+
+- **Always start queries with `Model::query()`** — gives the IDE/static analyzer a real `Builder<Model>` to chain on, so all subsequent methods get type hints and autocomplete.
+
+  ```php
+  // Good — IDE knows the builder type
+  $users = User::query()
+      ->where('status', UserStatus::ACTIVE)
+      ->orderBy('created_at')
+      ->get();
+
+  // Avoid — static call returns a less-typed chain in many IDEs
+  $users = User::where('status', UserStatus::ACTIVE)->get();
+  ```
+
+- **Always use Eloquent. The DB query builder (`DB::table(...)`) is the last resort.** Reach for `DB::` only when Eloquent genuinely cannot express the query (heavy bulk inserts, raw recursive CTEs, performance-critical reporting). Document the reason in a comment when you do.
+
+### Mutations must go through model instances
+
+- **Fetch the model record first, then mutate it** (`update`, `delete`, `save`, ...) so Eloquent model events (`saving`, `saved`, `updating`, `updated`, `deleting`, `deleted`) and observers fire correctly.
+
+  ```php
+  // Good — events / observers fire
+  $user = User::query()->findOrFail($userId);
+  $user->update(['status' => UserStatus::SUSPENDED]);
+
+  $post = Post::query()->findOrFail($postId);
+  $post->delete();
+
+  // Avoid — bulk builder mutations skip model events
+  User::query()->where('id', $userId)->update(['status' => UserStatus::SUSPENDED]);
+  Post::query()->where('id', $postId)->delete();
+  ```
+
+- **Exception**: when you explicitly want to bypass model events — e.g. data migrations, large backfills, seeders, or maintenance scripts where event side-effects are undesirable — bulk builder mutations are acceptable. Add a short comment stating the intent, e.g. `// bulk update — intentionally bypassing model events for migration`.
+
 ## Form Requests
 
 - One per action: `StoreUserRequest`, `UpdateUserRequest`.
