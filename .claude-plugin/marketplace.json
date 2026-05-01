@@ -29,7 +29,7 @@
       "name": "google-admob-kmp",
       "source": "./skills/google-admob-kmp",
       "description": "Implement Google Mobile Ads (AdMob) for Android and iOS in Kotlin Multiplatform (KMP) projects. Covers all ad formats: banner, interstitial, native, app open, rewarded. Handles consent management (UMP/GDPR/ATT), SDK v12+ type renames, iOS Swift bridge pattern, and debugging AdMob in KMP/Compose Multiplatform apps.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "mobile",
       "tags": ["admob", "google-ads", "kotlin-multiplatform", "kmp", "android", "ios", "compose-multiplatform", "mobile-ads", "ump", "gdpr"]
     }

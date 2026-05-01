@@ -158,6 +158,7 @@ See `references/consent-and-ump.md` for full GDPR/ATT consent flow.
 - `references/test-ad-unit-ids.md` — Official test IDs for all formats
 - `references/consent-and-ump.md` — GDPR/ATT consent flow for KMP
 - `references/ad-format-patterns.md` — Per-format implementation patterns
+- `references/ad-policy-rules.md` — AdMob policy constraints for ad rendering, animation restrictions, placement rules, and compliance checklist
 
 ## Security Policy
 
