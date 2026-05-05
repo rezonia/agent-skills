@@ -9,6 +9,7 @@ Private Claude Code skills marketplace for Rezonia engineering workflows.
 | [jira-workflow](./skills/jira-workflow) | Mandatory Jira gating for brainstorms, implementations, and PRs. Ticket creation/sync with EPIC + Fibonacci story points + sprint, assignee = current MCP user, status transitions, PR title enforcement. |
 | [laravel-php-guidelines](./skills/laravel-php-guidelines) | PHP + Laravel coding standards: PER style, strict typing, early-return control flow, Laravel helpers, Carbon, PHP 8 attributes, translation, routes/config/enums, full file & class naming conventions. |
 | [google-admob-kmp](./skills/google-admob-kmp) | Google Mobile Ads (AdMob) for Kotlin Multiplatform: banner, interstitial, native, app open, rewarded ads on Android and iOS. Covers iOS Swift bridge pattern, UMP/GDPR/ATT consent, SDK v12+ type renames, and Compose Multiplatform rendering. |
+| [filament-guidelines](./skills/filament-guidelines) | Filament 5.x conventions: simple resources, model policy per resource, `$action` notification pattern, `fas-*` icons, SPA/wire:navigate compatibility, dark mode, Filament Blade components, schema/table class extraction. |
 
 ## Install as a Claude Code plugin marketplace
 
@@ -50,7 +51,10 @@ agent-skills/
 │   ├── laravel-php-guidelines/
 │   │   ├── SKILL.md
 │   │   └── references/
-│   └── google-admob-kmp/
+│   ├── google-admob-kmp/
+│   │   ├── SKILL.md
+│   │   └── references/
+│   └── filament-guidelines/
 │       ├── SKILL.md
 │       └── references/
 └── README.md

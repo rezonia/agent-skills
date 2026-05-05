@@ -32,6 +32,14 @@
       "version": "0.2.0",
       "category": "mobile",
       "tags": ["admob", "google-ads", "kotlin-multiplatform", "kmp", "android", "ios", "compose-multiplatform", "mobile-ads", "ump", "gdpr"]
+    },
+    {
+      "name": "filament-guidelines",
+      "source": "./skills/filament-guidelines",
+      "description": "Rezonia's Filament 5.x coding conventions: simple resources (modal-based), model policy per resource, action notifications via $action->successNotificationTitle()->success() / errorNotificationTitle()->failure() (never Notification facade inside action()), fas-* FontAwesome icons over heroicons, SPA mode wire:navigate compatibility, dark mode semantic colors, Filament Blade components over raw HTML, schema/table class extraction for code quality.",
+      "version": "0.1.0",
+      "category": "standards",
+      "tags": ["php", "laravel", "filament", "filamentphp", "coding-standards", "resources", "actions", "panels"]
     }
   ]
 }
