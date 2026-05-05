@@ -1,0 +1,5 @@
+{
+  "name": "laravel-php-guidelines",
+  "description": "Rezonia's PHP and Laravel coding standards: PER coding style, strict typing, early-return control flow, Laravel helpers, Carbon, PHP 8 attributes, translation, route tuple notation, enum casing, and file/class naming conventions.",
+  "version": "0.2.0"
+}

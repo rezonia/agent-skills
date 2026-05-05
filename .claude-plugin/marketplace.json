@@ -11,23 +11,23 @@
   "plugins": [
     {
       "name": "jira-workflow",
-      "source": "./skills/jira-workflow",
+      "source": "./plugins/jira-workflow",
       "description": "Mandatory Jira workflow gating: ticket discovery/creation with EPIC + Fibonacci story points + sprint, assignee = current MCP user, In Progress on start, In Review on PR open, PR title format that drives auto-Done on merge.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "workflow",
       "tags": ["jira", "atlassian", "workflow", "pr", "agile"]
     },
     {
       "name": "laravel-php-guidelines",
-      "source": "./skills/laravel-php-guidelines",
+      "source": "./plugins/laravel-php-guidelines",
       "description": "Rezonia's PHP + Laravel coding standards: PER coding style, strict typing, early-return control flow, Laravel helpers (Arr/Str/data_get/fluent), Illuminate\\Support\\Carbon, PHP 8 attributes, translation (__() / @lang()), route tuple notation, enum UPPER_SNAKE_CASE, and full file/class naming conventions.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "standards",
       "tags": ["php", "laravel", "blade", "coding-standards", "per", "style"]
     },
     {
       "name": "google-admob-kmp",
-      "source": "./skills/google-admob-kmp",
+      "source": "./plugins/google-admob-kmp",
       "description": "Implement Google Mobile Ads (AdMob) for Android and iOS in Kotlin Multiplatform (KMP) projects. Covers all ad formats: banner, interstitial, native, app open, rewarded. Handles consent management (UMP/GDPR/ATT), SDK v12+ type renames, iOS Swift bridge pattern, and debugging AdMob in KMP/Compose Multiplatform apps.",
       "version": "0.2.0",
       "category": "mobile",
@@ -35,9 +35,9 @@
     },
     {
       "name": "filament-guidelines",
-      "source": "./skills/filament-guidelines",
+      "source": "./plugins/filament-guidelines",
       "description": "Rezonia's Filament 5.x coding conventions: simple resources (modal-based), model policy per resource, action notifications via $action->successNotificationTitle()->success() / errorNotificationTitle()->failure() (never Notification facade inside action()), fas-* FontAwesome icons over heroicons, SPA mode wire:navigate compatibility, dark mode semantic colors, Filament Blade components over raw HTML, schema/table class extraction for code quality.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "standards",
       "tags": ["php", "laravel", "filament", "filamentphp", "coding-standards", "resources", "actions", "panels"]
     }

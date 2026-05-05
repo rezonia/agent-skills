@@ -1,0 +1,5 @@
+{
+  "name": "filament-guidelines",
+  "description": "Rezonia's Filament 5.x coding conventions: simple resources, model policies, action notifications, FontAwesome icons, SPA mode, dark mode semantic colors, and schema/table class extraction.",
+  "version": "0.2.0"
+}
