@@ -1,0 +1,5 @@
+{
+  "name": "review-fix",
+  "description": "Address PR review comments end-to-end: detect the PR, fetch unresolved review threads (bot + human), triage, then per-comment fix/commit/push/reply/resolve. Use after a reviewer (Codex/CodeRabbit/teammate) leaves comments on a pull request. Standalone via gh + git; auto-enhances with claudekit agents when present.",
+  "version": "0.1.0"
+}
