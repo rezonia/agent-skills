@@ -29,6 +29,8 @@ claude plugin install jira-workflow@rezonia-agent-skills
 
 Private repo requires your GitHub auth to have read access to `rezonia/agent-skills`.
 
+> **`jira-workflow` prerequisite:** this skill does not bundle an MCP server. The **Atlassian MCP must be installed and authenticated** in Claude Code first — it drives all ticket operations through `mcp__plugin_atlassian_atlassian__*` tools. Without it, the `jira-manager` subagent reports `BLOCKED`.
+
 ## Manual install (fallback)
 
 ```bash
