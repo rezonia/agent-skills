@@ -1,5 +1,5 @@
 {
   "name": "jira-workflow",
   "description": "Mandatory Jira workflow gating for tasks, implementations, and PRs. Handles ticket discovery/creation with EPIC, story points, and sprint assignment using Atlassian MCP.",
-  "version": "0.2.0"
+  "version": "0.2.1"
 }

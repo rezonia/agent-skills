@@ -21,11 +21,11 @@ This skill requires the **Atlassian MCP server to be installed and authenticated
 
 - Install/connect the Atlassian MCP and complete OAuth so `atlassianUserInfo` returns your `accountId`.
 - If the `mcp__plugin_atlassian_atlassian__*` tools are absent, the `jira-manager` subagent has nothing to call and must report `BLOCKED` — the orchestrator then tells the user to install/authenticate the Atlassian MCP rather than proceeding.
-- The MCP tool namespace (`mcp__plugin_atlassian_atlassian__`) must match the `tools:` allowlist in `agents/jira-manager.md`; if your install exposes a different prefix, update that allowlist to match.
+- `jira-manager` inherits Claude Code's available tool surface so it can use the Atlassian MCP tools exposed by your installed plugin.
 
 ## Execution Model — Delegate to Subagent (MANDATORY)
 
-All Atlassian MCP calls (tool discovery, field resolution, JQL queries, issue CRUD, transitions) MUST run in the **`jira-manager` subagent** (shipped with this plugin at `.claude/agents/jira-manager.md`) to keep main session context lean. The Atlassian MCP tool surface is large and noisy — do not pollute the orchestrator.
+All Atlassian MCP calls (tool discovery, field resolution, JQL queries, issue CRUD, transitions) MUST run in the **`jira-manager` subagent** (shipped with this plugin at `agents/jira-manager.md`) to keep main session context lean. The Atlassian MCP tool surface is large and noisy — do not pollute the orchestrator.
 
 **Dispatch rule:** always spawn `jira-manager` with a task name (`query-epics-sprints` | `resolve-ticket` | `sync-ticket` | `transition`) + pre-resolved inputs. The subagent never prompts the user — it accepts inputs or returns `NEEDS_CONTEXT`.
 
