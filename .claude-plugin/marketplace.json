@@ -13,7 +13,7 @@
       "name": "jira-workflow",
       "source": "./plugins/jira-workflow",
       "description": "Mandatory Jira workflow gating: ticket discovery/creation with EPIC + Fibonacci story points + sprint, assignee = current MCP user, In Progress on start, In Review on PR open, PR title format that drives auto-Done on merge.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "category": "workflow",
       "tags": ["jira", "atlassian", "workflow", "pr", "agile"]
     },
