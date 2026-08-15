@@ -42,12 +42,12 @@
       "tags": ["php", "laravel", "filament", "filamentphp", "coding-standards", "resources", "actions", "panels"]
     },
     {
-      "name": "review-fix",
-      "source": "./plugins/review-fix",
-      "description": "Address PR review comments end-to-end: detect the PR, fetch unresolved review threads (bot + human), triage, then per-comment fix/commit/push/reply/resolve. Use after a reviewer (Codex/CodeRabbit/teammate) leaves comments on a pull request. Standalone via gh + git; auto-enhances with claudekit agents when present.",
-      "version": "0.1.0",
+      "name": "rez",
+      "source": "./plugins/rez",
+      "description": "Shared custom Claude Code skills used across the whole Rezonia org, in any project. Includes rez:create-gh-release (backfill GitHub Releases for existing tags) and rez:pr-review-resolver (resolve PR review threads end-to-end). Project-specific skills belong in their own plugin instead.",
+      "version": "0.2.0",
       "category": "workflow",
-      "tags": ["github", "pull-request", "code-review", "gh", "graphql", "workflow", "git"]
+      "tags": ["rezonia", "org-wide", "shared", "github", "release", "pull-request", "code-review", "workflow"]
     }
   ]
 }
