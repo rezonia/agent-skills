@@ -53,3 +53,15 @@ Install from this marketplace (for testing changes end-to-end):
 1. Edit `plugins/<name>/SKILL.md` and/or its `references/*.md` directly — never create `*-v2.md` or "enhanced" copies.
 2. If the skill's purpose, name, or trigger surface changed, update both `.claude-plugin/marketplace.json` and the `README.md` skills table.
 3. Run `quick_validate.py` against the skill directory before committing.
+
+## Skill placement tiers (MANDATORY)
+
+This marketplace is **public**. Place skills at the correct tier:
+
+| Tier | Location | Criteria |
+|------|----------|----------|
+| **Org-wide** | `plugins/rez/skills/<name>/` | Works in any project, no project-specific config/secrets/paths |
+| **Team/group** | `plugins/<team>-*/skills/<name>/` | Shared within a team but safe to publish publicly |
+| **Project-specific** | `<project-repo>/.claude/skills/<name>/` | Depends on that project's code, version scheme, secrets, templates, or internal paths |
+
+A skill belongs in the project repo if it references version formulas, app-store/Firebase templates, tag conventions specific to one repo, product names in logic (not just examples), or secret schemas unique to one project. When unsure, default to project-tier and only promote after confirming portability + security review.

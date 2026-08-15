@@ -1,10 +1,10 @@
 ---
-name: review-fix
-description: "Address PR review comments end-to-end: fetch unresolved review threads (bot + human), fix each, commit, push, reply, and resolve. Use after a reviewer (e.g. Codex/CodeRabbit/a teammate) leaves comments on a pull request, or when the user invokes /review-fix. Works standalone via gh + git; auto-enhances with claudekit agents when present."
+name: pr-review-resolver
+description: "Resolve PR review threads end-to-end: fetch unresolved review threads (bot + human), verify each comment against the code, apply minimal fixes (or push back with evidence), commit, push, reply, and resolve. Use after a reviewer (e.g. Codex/CodeRabbit/a teammate) leaves comments on a pull request, or when the user invokes /pr-review-resolver or mentions 'resolve review comments', 'address PR feedback'. Works standalone via gh + git; auto-enhances with claudekit agents when present."
 argument-hint: "[pr] [--auto] [--no-ck]"
 ---
 
-# Review Fix
+# PR Review Resolver
 
 ## Overview
 
@@ -178,7 +178,7 @@ enhanced: `docs-manager` agent | standalone: `references/docs-impact-checklist.m
 ## Decision Tree
 
 ```
-/review-fix
+/pr-review-resolver
 ├─ detect PR? ── no ──→ ask user
 ├─ unresolved threads? ── 0 ──→ done
 ├─ triage select

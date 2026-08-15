@@ -1,0 +1,5 @@
+{
+  "name": "rez",
+  "description": "Shared custom Claude Code skills used across the whole Rezonia org, in any project. Project-specific skills belong in their own plugin instead.",
+  "version": "0.1.0"
+}
