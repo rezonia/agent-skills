@@ -20,34 +20,61 @@ Portable OWNER / REPO:
 gh repo view --json owner,name --jq '.owner.login + " " + .name'
 ```
 
-## 1. Fetch unresolved review threads (idempotent core)
+## 1. Fetch actionable review threads (idempotent core)
 
 ```bash
 gh api graphql -f query='
 query($owner:String!,$repo:String!,$pr:Int!){
   repository(owner:$owner,name:$repo){
     pullRequest(number:$pr){
+      reviews(last:100){
+        nodes{ id author{login} submittedAt }
+      }
       reviewThreads(first:100){
         nodes{
           id
           isResolved
           comments(first:1){
-            nodes{ databaseId author{login} path line body }
+            nodes{
+              databaseId
+              author{login}
+              path
+              line
+              body
+              pullRequestReview{ id author{login} }
+            }
           }
         }
       }
     }
   }
 }' -f owner=OWNER -f repo=REPO -F pr=PR \
-  --jq '.data.repository.pullRequest.reviewThreads.nodes[]
-        | select(.isResolved==false)
-        | {threadId:.id,
-           commentId:.comments.nodes[0].databaseId,
-           author:.comments.nodes[0].author.login,
-           path:.comments.nodes[0].path,
-           line:.comments.nodes[0].line,
-           body:.comments.nodes[0].body}'
+  --jq '
+    .data.repository.pullRequest as $pullRequest
+    | ($pullRequest.reviews.nodes
+       | map(select(.author.login == "chatgpt-codex-connector" and .submittedAt != null))
+       | max_by(.submittedAt)
+       | .id) as $latestCodexReviewId
+    | $pullRequest.reviewThreads.nodes[]
+    | select(.isResolved == false)
+    | (.comments.nodes[0].pullRequestReview // null) as $originatingReview
+    | select(
+        $originatingReview == null
+        or $originatingReview.author.login != "chatgpt-codex-connector"
+        or ($latestCodexReviewId != null and $originatingReview.id == $latestCodexReviewId)
+      )
+    | {threadId:.id,
+       commentId:.comments.nodes[0].databaseId,
+       author:.comments.nodes[0].author.login,
+       path:.comments.nodes[0].path,
+       line:.comments.nodes[0].line,
+       body:.comments.nodes[0].body}'
 ```
+
+The query keeps every unresolved non-Codex thread. For Codex, it finds the
+review with the newest `submittedAt` and keeps only its unresolved threads;
+older Codex threads are superseded even if they remain open. If no Codex review
+exists, it simply returns unresolved non-Codex threads.
 
 Key fields:
 - `threadId` (e.g. `PRRT_kwD...`, an opaque node ID) → used by the **resolve** mutation.
@@ -87,8 +114,9 @@ Identify bots by known logins or a `[bot]` suffix:
 - `github-actions`
 - `copilot-pull-request-reviewer`
 
-All unresolved threads are fixed uniformly. Bot detection is used only for (a) the
-`@codex review` close step, and (b) noting severity badges (Codex emits `P1/P2/P3`).
+Non-Codex unresolved threads are fixed uniformly. Codex threads are limited to
+its newest submitted review; bot detection is also used for the `@codex review`
+close step and for noting severity badges (Codex emits `P1/P2/P3`).
 
 ## Pagination Note
 
