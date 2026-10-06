@@ -1,6 +1,6 @@
 # TWG CLI Cheatsheet (jira-workflow skill)
 
-Primary backend. Every command below was checked against `twg <command> --help` for `@atlassian/twg-cli` 1.2.5. When unsure about a flag, run `twg help describe "<command path>"` before guessing.
+Primary backend. Commands run inside the `jira-manager` subagent, except `twg whoami` (backend probe) and setup, which the orchestrator runs. Every command below was checked against `twg <command> --help` for `@atlassian/twg-cli` 1.2.5. When unsure about a flag, run `twg help describe "<command path>"` before guessing.
 
 Rules:
 - Always pass `-o json`. Responses are JSON; failures return `{ "ok": false, "error": { "code", "message", "remediation": { "command" } } }`.

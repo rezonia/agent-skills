@@ -33,22 +33,28 @@ No upfront check. Select the backend lazily on the **first Jira command of the s
    - MCP not available → run the setup workflow (`references/twg-setup.md`).
    - Setup declined and no MCP → stop and tell the user to set up TWG or the Atlassian MCP. Do not improvise via `curl`.
 4. Never fall back silently. Always log which backend is active and why.
-5. If a TWG command fails with `AUTH_REQUIRED` mid-session, ask the user to run `! twg login`, retry once, then offer the MCP fallback.
+5. If `jira-manager` reports TWG `AUTH_REQUIRED` mid-session, ask the user to run `! twg login`, re-dispatch once, then offer the MCP fallback.
 
-## Execution Model
+## Execution Model — Delegate to Subagent (MANDATORY)
 
-**Orchestrator (main session, both backends):**
-- Run `AskUserQuestion` to collect summary / epic / points / sprint / confirmation.
-- Read `./CLAUDE.md` `## Jira` block; prompt user once if missing, persist after confirmation.
-- Surface the final key + URL + status to the user.
+All Jira operations (field resolution, JQL queries, issue CRUD, transitions) MUST run in the **`jira-manager` subagent** (`agents/jira-manager.md`) on **both backends**. This keeps raw `twg` JSON output and the large MCP tool surface out of the main context.
 
-**TWG backend:** run `twg ... -o json` commands directly via Bash in the main session. Output is compact JSON, so no subagent is needed. Command reference: `references/twg-cli-cheatsheet.md`.
+**Orchestrator (main session) keeps only:**
+- Backend selection (`twg whoami` probe) and TWG setup (`references/twg-setup.md`) — both need user interaction.
+- `AskUserQuestion` to collect summary / epic / points / sprint / confirmation. NEVER ask the user from inside the subagent.
+- Reading `./CLAUDE.md` `## Jira` block; prompt user once if missing, persist after confirmation.
+- Surfacing the final key + URL + status to the user.
 
-**MCP backend:** all MCP calls MUST run in the **`jira-manager` subagent** (`agents/jira-manager.md`) to keep the large MCP tool surface out of the main context. Dispatch with a task name (`query-epics-sprints` | `resolve-ticket` | `sync-ticket` | `transition`) + pre-resolved inputs. The subagent never prompts the user — it accepts inputs or returns `NEEDS_CONTEXT`.
+**Dispatch rule:** always spawn `jira-manager` with the cached `backend` (`twg` | `mcp`), a task name (`query-epics-sprints` | `resolve-ticket` | `sync-ticket` | `transition`), and pre-resolved inputs. The subagent never prompts the user and never switches backends — it accepts inputs or returns `NEEDS_CONTEXT` / `BLOCKED`.
 
-**Prompt template for `jira-manager` (MCP only)**
+**Handling `BLOCKED` from `jira-manager`:**
+- TWG `AUTH_REQUIRED` / `twg` missing → ask the user to run `! twg login` (or run setup), then re-dispatch once; still blocked → offer the MCP fallback.
+- MCP tools missing → offer TWG setup.
+
+**Prompt template for `jira-manager`**
 
 ```
+Backend: twg | mcp
 Task: query-epics-sprints | resolve-ticket | sync-ticket | transition
 Jira config (from ./CLAUDE.md ## Jira section):
   cloudId: <...>
@@ -57,7 +63,8 @@ Jira config (from ./CLAUDE.md ## Jira section):
   storyPointsField: <...>
   epicLinkField: <...>
   sprintField: <...>
-Current MCP accountId (cached): <...>
+Site override (TWG only, optional): <prefix-or-cloudId>
+Current accountId (cached): <...>
 Inputs: <issue key / summary / epic / points / sprint / transition name>
 Expected output: terse structured summary per jira-manager contract.
 Work context: <repo path>
@@ -86,8 +93,8 @@ Before any Jira action, resolve project configuration:
    - `boardId` (numeric, for sprint queries)
    - Optional: default `issueType`, `epicLinkField`, `storyPointsField`, `sprintField` customfield IDs
 2. **If absent**: ask the user for missing values via `AskUserQuestion`, then offer to persist them to `./CLAUDE.md` under a `## Jira` section.
-3. **Discover missing IDs** with the active backend (TWG: `jira board query`, `jira workitem field create-metadata`; MCP: `references/atlassian-mcp-cheatsheet.md`), then persist them.
-4. **Current user**: cached from `twg whoami` (TWG) or `atlassianUserInfo` (MCP, inside `jira-manager`).
+3. **Discover missing IDs** via `jira-manager` on the active backend (it returns `resolvedFieldIds`), then persist them.
+4. **Current user**: cached from the orchestrator's `twg whoami` probe (TWG) or from `atlassianUserInfo` reported by `jira-manager` (MCP).
 
 See `references/claude-md-template.md` for the exact `## Jira` block to insert.
 
@@ -110,41 +117,38 @@ Use when user starts work without a Jira code.
 **Orchestrator (main session):**
 1. Ask: "Do you have a Jira issue code for this task?" (`AskUserQuestion`).
 2. **If yes** → jump to "Existing Ticket Sync".
-3. **If no** → fetch top 10 open Epics + active/future sprints for `boardId`:
-   - TWG: `twg jira workitem query --jql "..." -n 10` and `twg jira board sprints query --board-id <id> --state active|future`.
-   - MCP: dispatch `jira-manager` (task: `query-epics-sprints`).
+3. **If no** → dispatch `jira-manager` (task: `query-epics-sprints`) to fetch top 10 open Epics + active/future sprints for `boardId`. Receive compact options list back.
 4. Single `AskUserQuestion` batch: **Summary**, **EPIC** (options + "Create new EPIC"), **Story points** (`1, 2, 3, 5, 8, 13` with suggested rationale), **Sprint** (options + "Backlog"), and **Issue type** when ambiguous (`Bug` if fix/error/broken/regression keywords; else `Task`/`Story`).
 5. Confirm the resolved set with user if non-trivial.
 
-**Execute (TWG: Bash in main session; MCP: `jira-manager` task `resolve-ticket`):**
+**Subagent (`jira-manager`, task: `resolve-ticket`, dispatched with collected inputs):**
 6. If "new EPIC": create the EPIC (type `Epic`), capture key.
-7. Resolve custom-field IDs once if not cached (TWG: `field create-metadata`; MCP: `getJiraIssueTypeMetaWithFields`).
+7. Resolve custom-field IDs once if not cached.
 8. Create the issue: type, summary, description, assignee = current user, parent/epic link = EPIC key, story points.
-   - TWG: `create ... --assignee me --parent <EPIC> --field <storyPointsField>=<points>` (`create` has no `--story-points`; if the field ID is unknown, set points afterwards with `update --story-points`).
-9. If sprint chosen: set it (TWG: `update --sprint <id>`; MCP: `editJiraIssue` sprint field).
-10. Transition → **In Progress** (TWG: `transitions query` + `transition --transition-id`).
-11. Collect `{ issueKey, url, summary, points, epic, sprint, status }`.
+9. If sprint chosen: set the sprint.
+10. Transition → **In Progress**.
+11. Return `{ issueKey, url, summary, points, epic, sprint, status, resolvedFieldIds? }`.
 
 **Orchestrator:** report key + URL + status to user; persist any newly resolved field IDs to `./CLAUDE.md` `## Jira` block.
 
-Command details: `references/twg-cli-cheatsheet.md` (TWG) or `references/atlassian-mcp-cheatsheet.md` (MCP).
+Per-backend commands used by `jira-manager`: `references/twg-cli-cheatsheet.md` (TWG) or `references/atlassian-mcp-cheatsheet.md` (MCP).
 
 ## Workflow 2: Existing Ticket Sync
 
 Use when user provides or mentions a Jira code (e.g. `SKY-123`).
 
-**Read pass (TWG: `twg jira workitem get <KEY> -o json`; MCP: `jira-manager` task `sync-ticket`):**
+**Subagent (`jira-manager`, task: `sync-ticket` — read pass):**
 1. Fetch `summary`, `status`, `assignee`, story-points field, `parent`, sprint field.
-2. Build current state: `{ key, summary, status, assignee, points, epic, sprint }`.
+2. Return current state: `{ key, summary, status, assignee, points, epic, sprint }`.
 
 **Orchestrator (main session):**
 3. Detect gaps: missing story points, missing EPIC, assignee != current user, status in `To Do`/`Open`/`Backlog`.
 4. Batch one `AskUserQuestion`: confirm point value (Fibonacci), pick/create EPIC if missing, confirm reassignment, confirm transition to In Progress.
 
-**Write pass (TWG: one `update` with combined flags; MCP: second `jira-manager` dispatch):**
-5. Apply fixes (points, epic, assignee). TWG: `update --id <KEY> --story-points N --parent <EPIC> --assignee me`.
+**Subagent (`jira-manager`, second dispatch with user's answers — write pass):**
+5. Apply fixes (points, epic, assignee, sprint).
 6. Transition → **In Progress** (match by name case-insensitive: "In Progress" / "Start Progress").
-7. Collect final synced state.
+7. Return final synced state.
 
 **Orchestrator:** confirm sync summary to user (key, summary, points, epic, sprint, status).
 
@@ -165,9 +169,7 @@ Steps:
 1. Orchestrator: determine active Jira key (from session context, branch name `feature/SKY-123-...`, or ask user).
 2. Orchestrator: validate/format the PR title against `^\[[A-Z]+-\d+\]\s+(feat|fix|chore|docs|refactor|test|perf|build|ci|style)(\(.+\))?:\s+.+`. If user's title missing the key → prepend `[<KEY>]`. (No Jira call — regex only.)
 3. Orchestrator: run `gh pr create` with the validated title.
-4. After PR opens, transition → **In Review** (matches "In Review" / "Code Review" / "Ready for Review"):
-   - TWG: `twg jira workitem transitions query --id <KEY>` + `twg jira workitem transition --id <KEY> --transition-id <id>`.
-   - MCP: dispatch `jira-manager` (task: `transition`, name: "In Review").
+4. After PR opens, dispatch `jira-manager` (task: `transition`, name: "In Review") → matches "In Review" / "Code Review" / "Ready for Review" automatically.
 5. Note: merge automation (Jira Smart Commits / GitHub for Jira) handles **Done** transition automatically when the merge commit message contains the key — no Jira call required.
 
 See `references/pr-title-patterns.md` for full regex + edge cases.
@@ -197,10 +199,10 @@ Always present a suggested value with one-line rationale, then let user confirm 
 
 ## Sprint Selection
 
-1. Query active + future sprints for the configured `boardId` (TWG: `jira board sprints query --state active|future`; MCP: agile API via `jira-manager`).
+1. `jira-manager` queries active + future sprints for the configured `boardId` (TWG: `jira board sprints query --state active|future`; MCP: agile API).
 2. Present options as: `Active: <name>`, `Next: <name>`, `Backlog (no sprint)`.
 3. Default suggestion: **current active sprint** unless user specifies otherwise.
-4. Apply via `update --sprint <id>` (TWG) or `editJiraIssue` setting the sprint customfield (MCP).
+4. `jira-manager` applies it via `update --sprint <id>` (TWG) or `editJiraIssue` setting the sprint customfield (MCP).
 
 If the sprint query fails on either backend, fall back to asking the user for the sprint name or ID directly.
 
@@ -221,9 +223,9 @@ User: /brainstorm add daily revenue export to dashboard
 Orchestrator:
   1. AskUserQuestion: "Do you have a Jira issue code for this?" → "No, please create one."
   2. twg whoami -o json → OK. Log "Jira backend: TWG CLI".
-  3. twg jira workitem query (epics) + twg jira board sprints query (active, future).
+  3. Dispatch `jira-manager` (backend: twg, task: `query-epics-sprints`) → compact epic + sprint options.
   4. AskUserQuestion (single batch): summary, epic, points (suggest 5), sprint.
-  5. twg jira workitem create ... → SKY-241; update --sprint; transition → In Progress.
+  5. Dispatch `jira-manager` (backend: twg, task: `resolve-ticket`) → creates SKY-241, sets sprint, transitions to In Progress.
   6. Reply: "Created SKY-241 (5pts, Epic: Reporting, Sprint: Sprint 24). Status: In Progress."
   7. Continue with brainstorm.
 ```
@@ -235,7 +237,7 @@ Orchestrator:
   1. twg whoami -o json → "twg: command not found".
   2. AskUserQuestion: Set up TWG now (Recommended) / Use Atlassian MCP this session.
   3. User picks setup → references/twg-setup.md (install CLI, install TWG skills, `! twg login`, verify).
-  4. Resume Existing Ticket Sync on TWG: get → AskUserQuestion for gaps → update + transition.
+  4. Resume Existing Ticket Sync on TWG: `jira-manager` read pass → AskUserQuestion for gaps → `jira-manager` write pass (update + transition).
   5. Reply: "Synced SKY-187: 3pts, assignee=you, status=In Progress."
 ```
 
@@ -247,7 +249,7 @@ Orchestrator:
   2. Branch = feature/SKY-187-revenue-export → key = SKY-187 (no Jira call).
   3. Format title: "[SKY-187] feat: add daily revenue export" (regex only).
   4. Run gh pr create.
-  5. Dispatch `jira-manager` (task: `transition`, "In Review").
+  5. Dispatch `jira-manager` (backend: mcp, task: `transition`, "In Review").
   6. Reply: "PR opened. SKY-187 → In Review. Merge will auto-close to Done."
 ```
 
