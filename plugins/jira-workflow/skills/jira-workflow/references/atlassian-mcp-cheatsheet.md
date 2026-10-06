@@ -1,6 +1,8 @@
 # Atlassian MCP Cheatsheet (jira-workflow skill)
 
-All tools below are namespaced `mcp__plugin_atlassian_atlassian__*`.
+**Fallback backend.** Use only when TWG CLI is unavailable and the user chose MCP for the session (see `SKILL.md` → Backend Selection). Primary commands: `twg-cli-cheatsheet.md`.
+
+All tools below are namespaced `mcp__plugin_atlassian_atlassian__*` and run inside the `jira-manager` subagent.
 
 ## Bootstrap (per session)
 

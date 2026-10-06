@@ -6,7 +6,7 @@ Private Claude Code skills marketplace for Rezonia engineering workflows.
 
 | Skill | Description |
 |---|---|
-| [jira-workflow](./plugins/jira-workflow) | Mandatory Jira gating for brainstorms, implementations, and PRs. Ticket creation/sync with EPIC + Fibonacci story points + sprint, assignee = current MCP user, status transitions, PR title enforcement. |
+| [jira-workflow](./plugins/jira-workflow) | Mandatory Jira gating for brainstorms, implementations, and PRs. Ticket creation/sync with EPIC + Fibonacci story points + sprint, assignee = current Jira user, status transitions, PR title enforcement. Atlassian TWG CLI first, Atlassian MCP fallback, built-in TWG setup workflow. |
 | [laravel-php-guidelines](./plugins/laravel-php-guidelines) | PHP + Laravel coding standards: PER style, strict typing, early-return control flow, Laravel helpers, Carbon, PHP 8 attributes, translation, routes/config/enums, full file & class naming conventions. |
 | [google-admob-kmp](./plugins/google-admob-kmp) | Google Mobile Ads (AdMob) for Kotlin Multiplatform: banner, interstitial, native, app open, rewarded ads on Android and iOS. Covers iOS Swift bridge pattern, UMP/GDPR/ATT consent, SDK v12+ type renames, and Compose Multiplatform rendering. |
 | [filament-guidelines](./plugins/filament-guidelines) | Filament 5.x conventions: simple resources, model policy per resource, `$action` notification pattern, `fas-*` icons, SPA/wire:navigate compatibility, dark mode, Filament Blade components, schema/table class extraction. |
@@ -30,7 +30,15 @@ claude plugin install jira-workflow@rezonia-agent-skills
 
 Private repo requires your GitHub auth to have read access to `rezonia/agent-skills`.
 
-> **`jira-workflow` prerequisite:** this skill does not bundle an MCP server. The **Atlassian MCP must be installed and authenticated** in Claude Code first — it drives all ticket operations through `mcp__plugin_atlassian_atlassian__*` tools. Without it, the `jira-manager` subagent reports `BLOCKED`.
+> **`jira-workflow` prerequisite:** the skill uses the **Atlassian TWG CLI** first and falls back to the **Atlassian MCP**. Recommended setup:
+>
+> ```bash
+> npm install -g @atlassian/twg-cli@1.2.5
+> twg skills install --agent claude -y
+> twg login
+> ```
+>
+> If `twg` is missing or not logged in, the skill offers to run this setup for you (you run the interactive `twg login`), or to use the Atlassian MCP for the session when it is installed and authenticated.
 
 ## Manual install (fallback)
 

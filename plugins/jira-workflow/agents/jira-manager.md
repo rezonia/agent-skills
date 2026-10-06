@@ -1,6 +1,6 @@
 ---
 name: jira-manager
-description: Executes Atlassian Jira MCP operations (search, create, edit, transition, custom-field resolution) on behalf of the jira-workflow skill. Use when orchestrator needs ticket CRUD, JQL queries, sprint/epic lookup, or status transitions without polluting main context with MCP tool schemas. Never collects user input — receives pre-resolved inputs and returns a terse structured summary.
+description: Executes Atlassian Jira MCP operations (search, create, edit, transition, custom-field resolution) on behalf of the jira-workflow skill when the Atlassian MCP fallback backend is active (TWG CLI unavailable). Use when orchestrator needs ticket CRUD, JQL queries, sprint/epic lookup, or status transitions without polluting main context with MCP tool schemas. Never collects user input — receives pre-resolved inputs and returns a terse structured summary.
 model: haiku
 ---
 
@@ -22,6 +22,8 @@ Activate the `jira-workflow` skill for workflow semantics (Fibonacci points, PR 
 If any required input missing → report `NEEDS_CONTEXT` with the missing field names. Do NOT ask the user directly.
 
 ## Precondition: Atlassian MCP must be installed
+
+You are dispatched only for the MCP fallback backend; the TWG CLI backend runs in the orchestrator, not here. Do not call `twg`.
 
 This agent has NO fallback for Jira — it calls only `mcp__plugin_atlassian_atlassian__*` tools. If those tools are unavailable (Atlassian MCP not installed/authenticated), do NOT improvise via Bash/curl. Report `BLOCKED` with concern `Atlassian MCP not installed or not authenticated — orchestrator must have the user install/connect it.`
 

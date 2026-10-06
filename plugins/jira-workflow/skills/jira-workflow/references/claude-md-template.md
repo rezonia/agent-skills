@@ -17,6 +17,18 @@ Insert this block into `./CLAUDE.md` so the skill can resolve project config wit
 
 ## How to populate
 
+**TWG CLI (primary):**
+
+1. `twg whoami -o json` — confirms the logged-in site. For TWG `--site`, use the site prefix (`rezlabs`) or the cloud ID UUID.
+2. `twg jira board query --project <KEY> -o json` — find `boardId`.
+3. `twg jira space issue-types --id-or-key <KEY> -o json` — confirm available issue types.
+4. `twg jira workitem field create-metadata --space <KEY> --type Task -o json` — discover the **exact** customfield IDs for story points / epic link / sprint.
+5. Persist findings to CLAUDE.md after the first session.
+
+TWG `update` has native `--story-points`, `--sprint`, and `--parent` flags, but `create` needs `--field <storyPointsField>=N`, so keep `storyPointsField` populated.
+
+**Atlassian MCP (fallback):**
+
 1. Run `getAccessibleAtlassianResources` once to confirm cloudId.
 2. Run `getJiraProjectIssueTypesMetadata` for projectKey to confirm available issue types.
 3. Run `getJiraIssueTypeMetaWithFields` for the `Task` issuetype to discover the **exact** customfield IDs for story points / epic link / sprint (they vary by Jira instance).
