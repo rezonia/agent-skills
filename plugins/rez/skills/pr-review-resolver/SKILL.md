@@ -14,8 +14,8 @@ fetch **unresolved** review threads, triage them, then for each selected thread
 a counter-argument), commit, push, reply with the commit SHA, and resolve the
 thread. A comment — bot (Codex/CodeRabbit) or human — is a claim to verify against
 the real code, not ground truth; false positives get a reasoned push-back, not a
-needless change. Idempotent — operates on `reviewThreads{isResolved=false}`, so
-re-runs skip already-handled threads.
+needless change. Idempotent — re-runs skip already-handled threads and only
+consider Codex threads from its most recently submitted review.
 
 Works standalone with just `gh` + `git`. When claudekit is detected, it delegates
 context gathering, root-cause analysis, review, and docs to claudekit agents — but
@@ -73,10 +73,12 @@ CK_DOCS=$(has .claude/agents/docs-manager.md)
 Empty/error → `AskUserQuestion` for the PR number or URL. Resolve OWNER/REPO via
 `gh repo view`. Commands: `references/gh-graphql-cookbook.md`.
 
-### Step 2 — Fetch Unresolved Threads
+### Step 2 — Fetch Actionable Threads
 
-Run cookbook query 1 (`reviewThreads` filtered to `isResolved==false`). If zero
-unresolved threads → report "nothing to address" and stop.
+Run cookbook query 1. It keeps all unresolved non-Codex threads, but keeps a
+Codex thread only when its originating review is Codex's most recently submitted
+review; resolved and superseded Codex threads never enter triage. If zero threads
+remain → report "nothing to address" and stop.
 
 ### Step 3 — Triage (default ON)
 
