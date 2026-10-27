@@ -24,6 +24,7 @@ Each plugin is one directory under `plugins/`. The `SKILL.md` frontmatter `descr
 - **Trigger-rich descriptions**: the frontmatter `description` should list every situation that should activate the skill (see existing skills for the pattern — file extensions, slash commands, framework names, ticket key patterns).
 - **Security Policy section** is required in every `SKILL.md` (refusal rules, secret handling, scope guardrails).
 - **Scope section** must explicitly state what the skill does *not* handle, to prevent over-activation.
+- **Self-contained skills**: users can also install via `npx skills add rezonia/agent-skills`, which copies only `plugins/<plugin>/skills/<name>/`. A skill must work without its plugin's `agents/`. If it uses a bundled sub-agent, keep the agent's instructions in the skill's `references/` and make the agent file a thin wrapper (pattern: `jira-workflow` + `references/jira-manager-contract.md`).
 - Two registration sites must stay in sync when adding/renaming a skill: `.claude-plugin/marketplace.json` (`plugins[]` entry) and `README.md` (skills table).
 
 ## Common commands
@@ -39,6 +40,12 @@ Validate the full plugin (including plugin.json):
 
 ```bash
 claude plugin validate ./plugins/<name>
+```
+
+Check `npx skills` discovery and install:
+
+```bash
+npx skills add . --list
 ```
 
 Install from this marketplace (for testing changes end-to-end):

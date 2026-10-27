@@ -40,6 +40,31 @@ Private repo requires your GitHub auth to have read access to `rezonia/agent-ski
 >
 > If `twg` is missing or not logged in, the skill offers to run this setup for you (you run the interactive `twg login`), or to use the Atlassian MCP for the session when it is installed and authenticated.
 
+## Install with `npx skills`
+
+Works for Claude Code and any other agent the [`skills` CLI](https://github.com/vercel-labs/skills) supports (Codex, Cursor, OpenCode, ...). It discovers every skill in this repo through `.claude-plugin/marketplace.json`.
+
+```bash
+# See available skills
+npx skills add rezonia/agent-skills --list
+
+# Install one or more skills (project scope)
+npx skills add rezonia/agent-skills --skill jira-workflow --skill laravel-php-guidelines
+
+# Install globally for Claude Code only
+npx skills add rezonia/agent-skills --skill pr-review-resolver -g -a claude-code
+
+# Update installed skills later
+npx skills update
+```
+
+Private repo: the CLI uses your existing Git credentials, GitHub CLI login, or SSH. You can also pass `git@github.com:rezonia/agent-skills.git` as the source.
+
+Differences from the plugin install:
+
+- Skills are installed by their folder name: `rez:create-gh-release` becomes `create-gh-release`, `rez:pr-review-resolver` becomes `pr-review-resolver`.
+- Only skill folders are copied, not plugin agents. `jira-workflow` handles this itself: without the `jira-manager` agent it runs `references/jira-manager-contract.md` in a general-purpose subagent.
+
 ## Manual install (fallback)
 
 ```bash
@@ -60,8 +85,8 @@ agent-skills/
 │   │   ├── .claude-plugin/plugin.json
 │   │   ├── skills/jira-workflow/
 │   │   │   ├── SKILL.md
-│   │   │   └── references/
-│   │   └── agents/jira-manager.md
+│   │   │   └── references/   # incl. jira-manager-contract.md
+│   │   └── agents/jira-manager.md   # thin wrapper over the contract
 │   ├── laravel-php-guidelines/
 │   │   ├── .claude-plugin/plugin.json
 │   │   └── skills/laravel-php-guidelines/
@@ -92,4 +117,6 @@ agent-skills/
 1. Scaffold: `~/.claude/skills/.venv/bin/python3 ~/.claude/skills/skill-creator/scripts/init_skill.py <name> --path ./plugins`
 2. Validate: `~/.claude/skills/.venv/bin/python3 ~/.claude/skills/skill-creator/scripts/quick_validate.py ./plugins/<name>/skills/<name>`
 3. Add an entry to `.claude-plugin/marketplace.json`.
-4. PR to `main`.
+4. Keep the skill self-contained in `plugins/<plugin>/skills/<name>/`. `npx skills` installs only that folder, so plugin `agents/` must not be required (see `jira-workflow` for the contract + fallback pattern).
+5. Check discovery: `npx skills add . --list`.
+6. PR to `main`.
