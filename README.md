@@ -10,7 +10,7 @@ Private Claude Code skills marketplace for Rezonia engineering workflows.
 | [laravel-php-guidelines](./plugins/laravel-php-guidelines) | PHP + Laravel coding standards: PER style, strict typing, early-return control flow, Laravel helpers, Carbon, PHP 8 attributes, translation, routes/config/enums, full file & class naming conventions. |
 | [google-admob-kmp](./plugins/google-admob-kmp) | Google Mobile Ads (AdMob) for Kotlin Multiplatform: banner, interstitial, native, app open, rewarded ads on Android and iOS. Covers iOS Swift bridge pattern, UMP/GDPR/ATT consent, SDK v12+ type renames, and Compose Multiplatform rendering. |
 | [filament-guidelines](./plugins/filament-guidelines) | Filament 5.x conventions: simple resources, model policy per resource, `$action` notification pattern, `fas-*` icons, SPA/wire:navigate compatibility, dark mode, Filament Blade components, schema/table class extraction. |
-| [rez](./plugins/rez) | Shared Rezonia org-wide skills: `rez:create-gh-release` (backfill GitHub Release pages for existing tags) and `rez:pr-review-resolver` (resolve PR review threads end-to-end — fetch unresolved threads, verify each comment, fix/push-back, commit, push, reply, resolve). Standalone via gh + git; auto-enhances with claudekit when present. |
+| [rez](./plugins/rez) | Shared Rezonia org-wide skills: `rez:create-gh-release` (backfill GitHub Release pages for existing tags) and `rez:pr-review-resolver` (resolve PR review threads end-to-end — fetch unresolved threads, verify each comment, fix/push-back, commit, push, reply, resolve), and `rez:plan-decision-brief` (Vietnamese decision brief pinned at the top of every plan and printed before fixes: key decisions, scope, breaking changes, risks, scalability, design patterns, plus coding/backend/frontend/fullstack items). Standalone via gh + git; auto-enhances with claudekit when present. |
 
 ## Install as a Claude Code plugin marketplace
 
@@ -62,7 +62,7 @@ Private repo: the CLI uses your existing Git credentials, GitHub CLI login, or S
 
 Differences from the plugin install:
 
-- Skills are installed by their folder name: `rez:create-gh-release` becomes `create-gh-release`, `rez:pr-review-resolver` becomes `pr-review-resolver`.
+- Skills are installed by their folder name: `rez:create-gh-release` becomes `create-gh-release`, `rez:pr-review-resolver` becomes `pr-review-resolver`, `rez:plan-decision-brief` becomes `plan-decision-brief`.
 - Only skill folders are copied, not plugin agents. `jira-workflow` handles this itself: without the `jira-manager` agent it runs `references/jira-manager-contract.md` in a general-purpose subagent.
 
 ## Manual install (fallback)
@@ -106,9 +106,12 @@ agent-skills/
 │       ├── .claude-plugin/plugin.json
 │       └── skills/
 │           ├── create-gh-release/SKILL.md
-│           └── pr-review-resolver/
+│           ├── pr-review-resolver/
+│           │   ├── SKILL.md
+│           │   └── references/
+│           └── plan-decision-brief/
 │               ├── SKILL.md
-│               └── references/
+│               └── references/   # incl. claude-md-rule-snippet.md
 └── README.md
 ```
 

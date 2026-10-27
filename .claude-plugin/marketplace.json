@@ -44,10 +44,10 @@
     {
       "name": "rez",
       "source": "./plugins/rez",
-      "description": "Shared custom Claude Code skills used across the whole Rezonia org, in any project. Project-specific skills belong in their own plugin instead.",
-      "version": "0.1.0",
+      "description": "Shared custom Claude Code skills used across the whole Rezonia org, in any project: GitHub release backfill, PR review resolution, and a Vietnamese decision brief pinned at the top of plans and fixes (key decisions, scalability, design patterns). Project-specific skills belong in their own plugin instead.",
+      "version": "0.2.0",
       "category": "workflow",
-      "tags": ["rezonia", "org-wide", "shared", "github", "release", "pull-request", "code-review", "workflow"]
+      "tags": ["rezonia", "org-wide", "shared", "github", "release", "pull-request", "code-review", "workflow", "planning", "decision-brief", "architecture"]
     }
   ]
 }
