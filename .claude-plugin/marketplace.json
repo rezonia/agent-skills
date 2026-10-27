@@ -13,7 +13,7 @@
       "name": "jira-workflow",
       "source": "./plugins/jira-workflow",
       "description": "Mandatory Jira workflow gating: ticket discovery/creation with EPIC + Fibonacci story points + sprint, assignee = current Jira user, In Progress on start, In Review on PR open, PR title format that drives auto-Done on merge. Runs on Atlassian TWG CLI first with Atlassian MCP fallback, plus a TWG CLI + skills setup workflow.",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "category": "workflow",
       "tags": ["jira", "atlassian", "twg", "workflow", "pr", "agile"]
     },
@@ -44,10 +44,10 @@
     {
       "name": "rez",
       "source": "./plugins/rez",
-      "description": "Shared custom Claude Code skills used across the whole Rezonia org, in any project. Project-specific skills belong in their own plugin instead.",
-      "version": "0.1.0",
+      "description": "Shared custom Claude Code skills used across the whole Rezonia org, in any project: GitHub release backfill, PR review resolution, and a Vietnamese decision brief pinned at the top of plans and fixes (key decisions, scalability, design patterns). Project-specific skills belong in their own plugin instead.",
+      "version": "0.2.0",
       "category": "workflow",
-      "tags": ["rezonia", "org-wide", "shared", "github", "release", "pull-request", "code-review", "workflow"]
+      "tags": ["rezonia", "org-wide", "shared", "github", "release", "pull-request", "code-review", "workflow", "planning", "decision-brief", "architecture"]
     }
   ]
 }

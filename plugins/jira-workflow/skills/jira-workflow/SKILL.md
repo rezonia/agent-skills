@@ -20,7 +20,7 @@ This skill does NOT handle: actual code implementation, code review, deployment,
 Two backends. TWG CLI has priority; Atlassian MCP is the fallback.
 
 - **TWG CLI (primary):** `twg` on `PATH` (`@atlassian/twg-cli`, verified with 1.2.5), logged in via `twg login`, with TWG agent skills installed (`twg skills install`). Missing pieces are handled by the setup workflow in `references/twg-setup.md`.
-- **Atlassian MCP (fallback):** Atlassian MCP server installed and authenticated in Claude Code, exposing `mcp__plugin_atlassian_atlassian__*` tools. Used only through the `jira-manager` subagent, which inherits Claude Code's tool surface.
+- **Atlassian MCP (fallback):** Atlassian MCP server installed and authenticated in Claude Code, exposing `mcp__plugin_atlassian_atlassian__*` tools. Used only through the `jira-manager` subagent, which inherits the main session's tool surface.
 
 ## Backend Selection
 
@@ -37,7 +37,14 @@ No upfront check. Select the backend lazily on the **first Jira command of the s
 
 ## Execution Model — Delegate to Subagent (MANDATORY)
 
-All Jira operations (field resolution, JQL queries, issue CRUD, transitions) MUST run in the **`jira-manager` subagent** (`agents/jira-manager.md`) on **both backends**. This keeps raw `twg` JSON output and the large MCP tool surface out of the main context.
+All Jira operations (field resolution, JQL queries, issue CRUD, transitions) MUST run in the **`jira-manager` subagent** on **both backends**. This keeps raw `twg` JSON output and the large MCP tool surface out of the main context. The subagent's contract is `references/jira-manager-contract.md`.
+
+**Choosing the subagent:**
+- **`jira-manager` agent available** (Claude Code plugin install, `agents/jira-manager.md`) → spawn it.
+- **Not available** (e.g. installed via `npx skills add`, which copies only the skill folder) → spawn a general-purpose subagent (use a small/fast model when the runtime allows) with the same prompt. The `Contract:` line tells it to read and follow the contract.
+- **Runtime has no subagents** → follow the contract inline and keep Jira output out of the reply; return only the final summary.
+
+Everywhere below, "`jira-manager`" means whichever of these runs the contract.
 
 **Orchestrator (main session) keeps only:**
 - Backend selection (`twg whoami` probe) and TWG setup (`references/twg-setup.md`) — both need user interaction.
@@ -66,6 +73,7 @@ Jira config (from ./CLAUDE.md ## Jira section):
 Site override (TWG only, optional): <prefix-or-cloudId>
 Current accountId (cached): <...>
 Inputs: <issue key / summary / epic / points / sprint / transition name>
+Contract: <absolute path to this skill>/references/jira-manager-contract.md — read it first and follow it exactly.
 Expected output: terse structured summary per jira-manager contract.
 Work context: <repo path>
 ```
